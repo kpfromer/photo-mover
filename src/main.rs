@@ -2,6 +2,7 @@
 extern crate lazy_static;
 
 pub mod exif;
+pub mod file;
 pub mod operation;
 
 use anyhow::Result;
@@ -80,7 +81,7 @@ fn main() -> Result<()> {
 
     let operation = Operation {
         config,
-        move_operations,
+        file_operations: move_operations,
     };
     let OperationResults {
         no_duplicates,

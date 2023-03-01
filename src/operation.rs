@@ -1,12 +1,6 @@
-use crate::exif::*;
-use anyhow::{Context, Result};
-use chrono::prelude::*;
-use std::{
-    collections::HashSet,
-    fmt,
-    path::{Path, PathBuf},
-};
-use walkdir::{DirEntry, WalkDir};
+use crate::file::*;
+use anyhow::Result;
+use std::{collections::HashSet, fmt, path::PathBuf};
 
 #[derive(Debug)]
 pub enum HandleFileConflict {
@@ -65,7 +59,7 @@ pub struct OperationConfig {
 
 #[derive(Debug)]
 pub struct Operation {
-    pub move_operations: Vec<MoveOperation>,
+    pub file_operations: Vec<MoveOperation>,
     pub config: OperationConfig,
 }
 
@@ -91,44 +85,51 @@ fn find_duplicates(operations: &[MoveOperation]) -> (Vec<&MoveOperation>, Vec<&M
     (not_duplicates, duplicates)
 }
 
-fn perform_move_operation(
+pub fn move_operation_to_file_operation(
     move_operation: &MoveOperation,
     operation_type: &OperationType,
-) -> Result<()> {
-    std::fs::create_dir_all(move_operation.destination.parent().unwrap())
-        .context("failed to create directories for file")?;
-
+) -> FileOperation {
     match operation_type {
-        OperationType::Copy => {
-            std::fs::copy(&move_operation.source, &move_operation.destination)
-                .context("failed to copy file")?;
-        }
-        OperationType::Move => {
-            std::fs::rename(&move_operation.source, &move_operation.destination)
-                .context("failed to move file")?;
-        }
+        OperationType::Copy => FileOperation::Copy {
+            source: move_operation.source.clone(),
+            destination: move_operation.destination.clone(),
+        },
+        OperationType::Move => FileOperation::Move {
+            source: move_operation.source.clone(),
+            destination: move_operation.destination.clone(),
+        },
     }
-    Ok(())
 }
 
 pub fn perform_operation(operation: &Operation, dry_run: bool) -> Result<OperationResults> {
     // Find duplicates
-    let (not_duplicates, duplicates) = find_duplicates(&operation.move_operations);
+    let (not_duplicates, duplicates) = find_duplicates(&operation.file_operations);
+
+    let mut file_operations = Vec::new();
 
     if !dry_run {
         // Handle duplicates
         match &operation.config.handle_conflicts {
             HandleFileConflict::DoNothing => {
-                for op in not_duplicates.iter() {
-                    perform_move_operation(op, &operation.config.operation_type)?;
+                for op in duplicates.iter() {
+                    file_operations.push(move_operation_to_file_operation(
+                        op,
+                        &operation.config.operation_type,
+                    ));
                 }
             }
             HandleFileConflict::Overwrite => {
                 for op in not_duplicates.iter() {
-                    perform_move_operation(op, &operation.config.operation_type)?;
+                    file_operations.push(move_operation_to_file_operation(
+                        op,
+                        &operation.config.operation_type,
+                    ));
                 }
                 for op in duplicates.iter() {
-                    perform_move_operation(op, &operation.config.operation_type)?;
+                    file_operations.push(move_operation_to_file_operation(
+                        op,
+                        &operation.config.operation_type,
+                    ));
                 }
             }
             HandleFileConflict::Rename => {
@@ -136,31 +137,32 @@ pub fn perform_operation(operation: &Operation, dry_run: bool) -> Result<Operati
             }
             HandleFileConflict::MoveToDuplicateFolder(folder) => {
                 for op in not_duplicates.iter() {
-                    perform_move_operation(op, &operation.config.operation_type)?;
+                    file_operations.push(move_operation_to_file_operation(
+                        op,
+                        &operation.config.operation_type,
+                    ));
                 }
 
                 // TODO WHAT IF MULTIPLE DUPLICATES WITH SAME NAME
                 for duplicate in duplicates.iter() {
-                    std::fs::create_dir_all(folder).context("failed to create duplicate folder")?;
-                    match operation.config.operation_type {
-                        OperationType::Copy => {
-                            std::fs::copy(
-                                &duplicate.source,
-                                folder.join(duplicate.source.file_name().unwrap()),
-                            )
-                            .context("failed to copy duplicate file")?;
-                        }
-                        OperationType::Move => {
-                            std::fs::rename(
-                                &duplicate.source,
-                                folder.join(duplicate.source.file_name().unwrap()),
-                            )
-                            .context("failed to move duplicate file")?;
-                        }
-                    }
+                    let file_operation = match operation.config.operation_type {
+                        OperationType::Copy => FileOperation::Copy {
+                            source: duplicate.source.clone(),
+                            destination: folder.join(duplicate.source.file_name().unwrap()),
+                        },
+                        OperationType::Move => FileOperation::Move {
+                            source: duplicate.source.clone(),
+                            destination: folder.join(duplicate.source.file_name().unwrap()),
+                        },
+                    };
+                    file_operations.push(file_operation);
                 }
             }
         }
+
+        // TODO Handle no date
+
+        apply_file_operations(file_operations)?;
     }
 
     Ok(OperationResults {
