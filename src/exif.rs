@@ -1,6 +1,9 @@
 use anyhow::{Context, Result};
 use chrono::prelude::*;
-use std::{collections::HashSet, path::Path};
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+};
 use walkdir::{DirEntry, WalkDir};
 use which::which;
 
@@ -21,6 +24,11 @@ lazy_static! {
         .collect();
         extensions
     };
+}
+
+pub struct ExifFile {
+    pub path: PathBuf,
+    pub date_time: Option<NaiveDateTime>,
 }
 
 fn command_exists(cmd: &str) -> bool {
@@ -62,20 +70,39 @@ fn is_hidden(entry: &DirEntry) -> bool {
         .map(|s| s.starts_with("."))
         .unwrap_or(false)
 }
-fn get_exif_file_count(path: &Path) -> Result<(u32, u32)> {
-    let mut valid_exif_count: u32 = 0;
-    let mut invalid_exif_count: u32 = 0;
+
+pub fn get_exif_files(path: &Path) -> Result<Vec<ExifFile>> {
+    let mut exif_files: Vec<ExifFile> = Vec::new();
 
     let walker = WalkDir::new(path).into_iter();
     for entry in walker.filter_entry(|e| !is_hidden(e)) {
         let entry = entry.context("failed to read directory entry")?;
-        if matches_file_extensions(entry.path()) && get_date_time_original(entry.path())?.is_some()
-        {
-            valid_exif_count += 1;
-        } else {
-            invalid_exif_count += 1;
+        if matches_file_extensions(entry.path()) {
+            let date_time = get_date_time_original(entry.path())?;
+            exif_files.push(ExifFile {
+                path: entry.path().to_path_buf(),
+                date_time,
+            });
         }
     }
 
-    Ok((valid_exif_count, invalid_exif_count))
+    Ok(exif_files)
 }
+
+// fn get_exif_file_count(path: &Path) -> Result<(u32, u32)> {
+//     let mut valid_exif_count: u32 = 0;
+//     let mut invalid_exif_count: u32 = 0;
+
+//     let walker = WalkDir::new(path).into_iter();
+//     for entry in walker.filter_entry(|e| !is_hidden(e)) {
+//         let entry = entry.context("failed to read directory entry")?;
+//         if matches_file_extensions(entry.path()) && get_date_time_original(entry.path())?.is_some()
+//         {
+//             valid_exif_count += 1;
+//         } else {
+//             invalid_exif_count += 1;
+//         }
+//     }
+
+//     Ok((valid_exif_count, invalid_exif_count))
+// }
