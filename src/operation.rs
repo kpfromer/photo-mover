@@ -57,8 +57,7 @@ pub struct OperationConfig {
     pub operation_type: OperationType,
     pub handle_conflicts: HandleFileConflict,
     pub handle_no_date: HandleNoDate,
-    // TODO
-    // pub time_format: String,
+    pub date_folder_format: String,
 }
 
 #[derive(Debug)]
@@ -124,6 +123,7 @@ pub fn move_operation_to_file_operation(
 }
 
 pub fn perform_operation(operation: &Operation, dry_run: bool) -> Result<OperationResults> {
+    let mut no_date_files_len = 0;
     let all_file_operations = operation
         .files
         .iter()
@@ -131,7 +131,12 @@ pub fn perform_operation(operation: &Operation, dry_run: bool) -> Result<Operati
             OperationFile::ExifFile(exif_file) => {
                 let source = exif_file.path.clone();
                 let mut destination = operation.config.output_folder.clone();
-                destination.push(exif_file.date_time.format("%Y/%m/%d").to_string());
+                destination.push(
+                    exif_file
+                        .date_time
+                        .format(&operation.config.date_folder_format)
+                        .to_string(),
+                );
                 destination.push(exif_file.path.file_name().unwrap());
 
                 Some(match operation.config.operation_type {
@@ -151,6 +156,7 @@ pub fn perform_operation(operation: &Operation, dry_run: bool) -> Result<Operati
                     let source = path.clone();
                     let mut destination = folder.clone();
                     destination.push(path.file_name().unwrap());
+                    no_date_files_len += 1;
 
                     Some(match operation.config.operation_type {
                         OperationType::Copy => FileOperation::Copy {
@@ -231,6 +237,6 @@ pub fn perform_operation(operation: &Operation, dry_run: bool) -> Result<Operati
         no_duplicates: not_duplicates_len,
         duplicates: duplicates_len,
         // TODO
-        no_date: 0,
+        no_date: no_date_files_len,
     })
 }

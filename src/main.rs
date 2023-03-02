@@ -11,25 +11,6 @@ use exif::*;
 use operation::*;
 use std::path::{Path, PathBuf};
 
-fn exif_files_to_operations(files: &[ExifFile], output_folder: &Path) -> Vec<MoveOperation> {
-    let mut move_operations = Vec::new();
-    for file in files {
-        // TODO: handle no date files
-        if let Some(date_time) = file.date_time {
-            let date = date_time.date();
-            let mut destination = PathBuf::from(output_folder);
-            destination.push(date.format("%Y/%m/%d").to_string());
-            destination.push(file.path.file_name().unwrap());
-
-            move_operations.push(MoveOperation {
-                source: file.path.clone(),
-                destination,
-            });
-        }
-    }
-    move_operations
-}
-
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -46,12 +27,15 @@ struct Args {
     overwrite_duplicates: bool,
     #[arg(long)]
     duplicate_folder: Option<PathBuf>,
-    // TODO: implement no date option
+
     #[arg(long)]
     dry_run: bool,
 
     #[arg(long)]
     no_date_folder: Option<PathBuf>,
+
+    #[arg(long, default_value = "%Y/%m/%d")]
+    date_folder_format: String,
 }
 
 fn main() -> Result<()> {
@@ -78,8 +62,8 @@ fn main() -> Result<()> {
             output_folder: args.destination,
             operation_type: args.movement_type,
             handle_conflicts,
-            // TODO: get working
             handle_no_date,
+            date_folder_format: args.date_folder_format,
         }
     };
 
