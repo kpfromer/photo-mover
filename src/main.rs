@@ -49,6 +49,9 @@ struct Args {
     // TODO: implement no date option
     #[arg(long)]
     dry_run: bool,
+
+    #[arg(long)]
+    no_date_folder: Option<PathBuf>,
 }
 
 fn main() -> Result<()> {
@@ -67,8 +70,12 @@ fn main() -> Result<()> {
             (false, Some(path)) => HandleFileConflict::MoveToDuplicateFolder(path),
             (false, None) => HandleFileConflict::DoNothing,
         };
-        let handle_no_date = HandleNoDate::DoNothing;
+        let handle_no_date = match args.no_date_folder {
+            Some(path) => HandleNoDate::MoveToNoDateFolder(path),
+            None => HandleNoDate::DoNothing,
+        };
         OperationConfig {
+            output_folder: args.destination,
             operation_type: args.movement_type,
             handle_conflicts,
             // TODO: get working
@@ -76,13 +83,18 @@ fn main() -> Result<()> {
         }
     };
 
-    let move_operations =
-        exif_files_to_operations(&get_exif_files(&args.source)?, &args.destination);
+    let files = get_exif_files(&args.source)?
+        .into_iter()
+        .map(|file| match file.date_time {
+            Some(datetime) => OperationFile::ExifFile(DateTimeFile {
+                path: file.path,
+                date_time: datetime,
+            }),
+            None => OperationFile::NoDateFile(file.path),
+        })
+        .collect();
 
-    let operation = Operation {
-        config,
-        file_operations: move_operations,
-    };
+    let operation = Operation { config, files };
     let OperationResults {
         no_duplicates,
         duplicates,

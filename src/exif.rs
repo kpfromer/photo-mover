@@ -26,6 +26,7 @@ lazy_static! {
     };
 }
 
+#[derive(Debug)]
 pub struct ExifFile {
     pub path: PathBuf,
     pub date_time: Option<NaiveDateTime>,

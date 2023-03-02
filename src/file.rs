@@ -1,6 +1,7 @@
 use anyhow::Result;
 use std::path::PathBuf;
 
+#[derive(Debug, Clone)]
 pub enum FileOperation {
     Copy {
         source: PathBuf,
@@ -12,7 +13,7 @@ pub enum FileOperation {
     },
 }
 
-pub fn apply_file_operation(operation: FileOperation) -> Result<()> {
+pub fn apply_file_operation(operation: &FileOperation) -> Result<()> {
     match operation {
         FileOperation::Copy {
             source,
@@ -33,7 +34,7 @@ pub fn apply_file_operation(operation: FileOperation) -> Result<()> {
     Ok(())
 }
 
-pub fn apply_file_operations(operations: Vec<FileOperation>) -> Result<()> {
+pub fn apply_file_operations(operations: &[FileOperation]) -> Result<()> {
     for operation in operations {
         apply_file_operation(operation)?;
     }
