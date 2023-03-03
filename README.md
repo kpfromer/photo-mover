@@ -23,4 +23,4 @@ photo-mover -s ./Images -d out/ -m move --duplicate-folder dups --no-date-folder
 
 ```bash
 cargo install photo-mover
-``
+```
