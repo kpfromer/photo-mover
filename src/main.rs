@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate lazy_static;
-
 pub mod exif;
 pub mod file;
 pub mod operation;
