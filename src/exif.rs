@@ -58,16 +58,27 @@ pub fn get_date_time_original_multiple(paths: &[PathBuf]) -> Result<Vec<Option<N
     Ok(date_times)
 }
 
-pub fn get_date_time_multiple(path: &Path) -> Result<Vec<ExifFile>> {
-    let output = std::process::Command::new("exiftool")
-        .arg("-T")
-        .arg("-r")
-        .arg("-Directory")
-        .arg("-Filename")
-        .arg("-DateTimeOriginal")
-        .arg(path)
-        .output()
-        .context("failed to execute exiftool")?;
+pub fn get_date_time_multiple(path: &Path, recursive: bool) -> Result<Vec<ExifFile>> {
+    let output = if recursive {
+        std::process::Command::new("exiftool")
+            .arg("-T")
+            .arg("-r")
+            .arg("-Directory")
+            .arg("-Filename")
+            .arg("-DateTimeOriginal")
+            .arg(path)
+            .output()
+            .context("failed to execute exiftool")?
+    } else {
+        std::process::Command::new("exiftool")
+            .arg("-T")
+            .arg("-Directory")
+            .arg("-Filename")
+            .arg("-DateTimeOriginal")
+            .arg(path)
+            .output()
+            .context("failed to execute exiftool")?
+    };
 
     let output = String::from_utf8(output.stdout).context("failed to parse exiftool output")?;
 

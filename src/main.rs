@@ -24,6 +24,9 @@ struct Args {
     #[arg(short, long, default_value_t = OperationType::Copy)]
     movement_type: OperationType,
 
+    #[arg(long)]
+    recursive: bool,
+
     #[arg(short, long)]
     overwrite_duplicates: bool,
     #[arg(long)]
@@ -69,7 +72,7 @@ fn main() -> Result<()> {
     };
 
     let spinner = Spinner::new(spinners::Dots, "Finding files...", Color::Blue);
-    let files = get_date_time_multiple(&args.source)?
+    let files = get_date_time_multiple(&args.source, args.recursive)?
         .into_iter()
         .map(|file| match file.date_time {
             Some(datetime) => OperationFile::ExifFile(DateTimeFile {
