@@ -67,16 +67,21 @@ fn main() -> Result<()> {
         }
     };
 
-    let files = get_exif_files(&args.source)?
+    let files = get_exif_files(&args.source)?;
+    let files = get_date_time_original_multiple(&files)?
         .into_iter()
-        .map(|file| match file.date_time {
-            Some(datetime) => OperationFile::ExifFile(DateTimeFile {
-                path: file.path,
-                date_time: datetime,
-            }),
-            None => OperationFile::NoDateFile(file.path),
+        .enumerate()
+        .map(|(index, datetime)| {
+            let file = &files[index];
+            match datetime {
+                Some(datetime) => OperationFile::ExifFile(DateTimeFile {
+                    path: file.clone(),
+                    date_time: datetime,
+                }),
+                None => OperationFile::NoDateFile(file.clone()),
+            }
         })
-        .collect();
+        .collect::<Vec<OperationFile>>();
 
     let operation = Operation { config, files };
     let OperationResults {

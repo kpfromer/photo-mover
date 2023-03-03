@@ -40,17 +40,22 @@ pub fn exiftool_exists() -> bool {
     command_exists("exiftool")
 }
 
-pub fn get_date_time_original(path: &Path) -> Result<Option<NaiveDateTime>> {
+pub fn get_date_time_original_multiple(paths: &[PathBuf]) -> Result<Vec<Option<NaiveDateTime>>> {
     let output = std::process::Command::new("exiftool")
         .arg("-T")
-        .arg(path)
+        .args(paths)
         .arg("-DateTimeOriginal")
         .output()
         .context("failed to execute exiftool")?;
 
     let output = String::from_utf8(output.stdout).context("failed to parse exiftool output")?;
 
-    Ok(NaiveDateTime::parse_from_str(&output.trim(), "%Y:%m:%d %H:%M:%S").ok())
+    let date_times = output
+        .lines()
+        .map(|line| NaiveDateTime::parse_from_str(line.trim(), "%Y:%m:%d %H:%M:%S").ok())
+        .collect();
+
+    Ok(date_times)
 }
 
 pub fn matches_file_extensions(path: &Path) -> bool {
@@ -72,38 +77,16 @@ fn is_hidden(entry: &DirEntry) -> bool {
         .unwrap_or(false)
 }
 
-pub fn get_exif_files(path: &Path) -> Result<Vec<ExifFile>> {
-    let mut exif_files: Vec<ExifFile> = Vec::new();
+pub fn get_exif_files(path: &Path) -> Result<Vec<PathBuf>> {
+    let mut exif_files = Vec::new();
 
     let walker = WalkDir::new(path).into_iter();
     for entry in walker.filter_entry(|e| !is_hidden(e)) {
         let entry = entry.context("failed to read directory entry")?;
         if matches_file_extensions(entry.path()) {
-            let date_time = get_date_time_original(entry.path())?;
-            exif_files.push(ExifFile {
-                path: entry.path().to_path_buf(),
-                date_time,
-            });
+            exif_files.push(entry.path().to_path_buf());
         }
     }
 
     Ok(exif_files)
 }
-
-// fn get_exif_file_count(path: &Path) -> Result<(u32, u32)> {
-//     let mut valid_exif_count: u32 = 0;
-//     let mut invalid_exif_count: u32 = 0;
-
-//     let walker = WalkDir::new(path).into_iter();
-//     for entry in walker.filter_entry(|e| !is_hidden(e)) {
-//         let entry = entry.context("failed to read directory entry")?;
-//         if matches_file_extensions(entry.path()) && get_date_time_original(entry.path())?.is_some()
-//         {
-//             valid_exif_count += 1;
-//         } else {
-//             invalid_exif_count += 1;
-//         }
-//     }
-
-//     Ok((valid_exif_count, invalid_exif_count))
-// }
