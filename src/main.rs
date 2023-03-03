@@ -9,7 +9,7 @@ use anyhow::Result;
 use clap::Parser;
 use exif::*;
 use operation::*;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
