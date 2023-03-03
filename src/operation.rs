@@ -230,7 +230,7 @@ pub fn perform_operation(operation: &Operation, dry_run: bool) -> Result<Operati
             }
         }
 
-        apply_file_operations(&file_operations)?;
+        apply_file_operations(&file_operations, true)?;
     }
 
     Ok(OperationResults {

@@ -10,6 +10,7 @@ edition = "2021"
 anyhow = "1.0.69"
 chrono = "0.4.23"
 clap = { version = "4.1.8", features = ["derive"] }
+indicatif = "0.17.3"
 lazy_static = "1.4.0"
 walkdir = "2.3.2"
 which = "4.4.0"

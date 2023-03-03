@@ -58,6 +58,43 @@ pub fn get_date_time_original_multiple(paths: &[PathBuf]) -> Result<Vec<Option<N
     Ok(date_times)
 }
 
+pub fn get_date_time_multiple(path: &Path) -> Result<Vec<ExifFile>> {
+    let output = std::process::Command::new("exiftool")
+        .arg("-T")
+        .arg("-r")
+        .arg("-Directory")
+        .arg("-Filename")
+        .arg("-DateTimeOriginal")
+        .arg(path)
+        .output()
+        .context("failed to execute exiftool")?;
+
+    let output = String::from_utf8(output.stdout).context("failed to parse exiftool output")?;
+
+    let exif_files = output
+        .lines()
+        .filter_map(|line| {
+            let mut parts = line.split('\t');
+            let first_part = parts.next().unwrap();
+
+            if first_part.to_lowercase().starts_with("warning") {
+                return None;
+            }
+
+            let mut path = PathBuf::from(first_part);
+            path.push(parts.next().unwrap());
+
+            let date_time = parts
+                .next()
+                .map(|date_time| NaiveDateTime::parse_from_str(date_time, "%Y:%m:%d %H:%M:%S").ok())
+                .flatten();
+            Some(ExifFile { path, date_time })
+        })
+        .collect();
+
+    Ok(exif_files)
+}
+
 pub fn matches_file_extensions(path: &Path) -> bool {
     path.is_file()
         && path

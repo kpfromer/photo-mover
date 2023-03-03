@@ -9,6 +9,7 @@ use anyhow::Result;
 use clap::Parser;
 use exif::*;
 use operation::*;
+use spinoff::{spinners, Color, Spinner};
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -67,23 +68,21 @@ fn main() -> Result<()> {
         }
     };
 
-    let files = get_exif_files(&args.source)?;
-    let files = get_date_time_original_multiple(&files)?
+    let spinner = Spinner::new(spinners::Dots, "Finding files...", Color::Blue);
+    let files = get_date_time_multiple(&args.source)?
         .into_iter()
-        .enumerate()
-        .map(|(index, datetime)| {
-            let file = &files[index];
-            match datetime {
-                Some(datetime) => OperationFile::ExifFile(DateTimeFile {
-                    path: file.clone(),
-                    date_time: datetime,
-                }),
-                None => OperationFile::NoDateFile(file.clone()),
-            }
+        .map(|file| match file.date_time {
+            Some(datetime) => OperationFile::ExifFile(DateTimeFile {
+                path: file.path,
+                date_time: datetime,
+            }),
+            None => OperationFile::NoDateFile(file.path),
         })
-        .collect::<Vec<OperationFile>>();
+        .collect();
+    spinner.success("Loaded files!");
 
     let operation = Operation { config, files };
+    // TODO: fix multiple duplicates with same name
     let OperationResults {
         no_duplicates,
         duplicates,
