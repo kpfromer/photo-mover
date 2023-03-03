@@ -11,7 +11,7 @@ A simple script to move photos from a source directory to a destination director
 
 ## Requirements
 
-- ExifTool (https://exiftool.org/)
+- You must have `exiftool` in your path (https://exiftool.org/)
 
 ## Usage
 
